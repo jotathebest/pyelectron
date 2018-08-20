@@ -27,7 +27,8 @@ class ArduinoSerial:
         """
         if sys.platform.startswith('win'):
             ports = ['COM%s' % (i + 1) for i in range(256)]
-        elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        elif sys.platform.startswith(
+                'linux') or sys.platform.startswith('cygwin'):
             ports = glob.glob('/dev/tty[A-Za-z]*')
         else:
             raise EnvironmentError('Unsupported platform')
@@ -43,34 +44,23 @@ class ArduinoSerial:
 
         self.available_ports = result
 
-    def init_arduino(self, serial_port_path,
-                     baudrate=None,
-                     bytesize=None,
-                     parity=None,
-                     stopbits=None,
-                     timeout=None,
-                     xonxoff=None,
-                     rtscts=None,
-                     dsrdtr=None):
+    def init_arduino(self, *args, **kwargs):
         '''
         Initializes a communication port with Arduino
         '''
-        if baudrate is None:
-            baudrate = self.baudrate
-        if bytesize is None:
-            bytesize = self.bytesize
-        if parity is None:
-            parity = self.parity
-        if stopbits is None:
-            stopbits = self.stopbits
-        if timeout is None:
-            timeout = self.timeout
-        if xonxoff is None:
-            xonxoff = self.xonxoff
-        if rtscts is None:
-            rtscts = self.rtscts
-        if dsrdtr is None:
-            dsrdtr = self.dsrdtr
+
+        baudrate = kwargs.get("baudrate", self.baudrate)
+        bytesize = kwargs.get("bytesize", self.bytesize)
+        parity = kwargs.get("parity", self.parity)
+        stopbits = kwargs.get("stopbits", self.stopbits)
+        timeout = kwargs.get("timeout", self.timeout)
+        xonxoff = kwargs.get("xonxoff", self.xonxoff)
+        rtscts = kwargs.get("rtscts", self.rtscts)
+        dsrdtr = kwargs.get("dsrdtr", self.dsrdtr)
+        serial_port_path = kwargs.get("serial_port_path", None)
+
+        if serial_port_path is None:
+            raise("[ERROR] You must define a serial port path")
 
         self.arduino = serial.Serial(port=serial_port_path,
                                      baudrate=baudrate,
@@ -89,13 +79,16 @@ class ArduinoSerial:
         self.arduino.write(b"off")
 
 
-def main():
-    arduino = ArduinoSerial()
-    arduino.search_serial_ports()
+def main(arduino=ArduinoSerial()):
+    # Searchs for available ports
+    if len(arduino.available_ports) == 0:
+        arduino.search_serial_ports()
+    kwargs = {}
 
     for port in arduino.available_ports:
         print("[INFO] Sending message to port {}".format(port))
-        arduino.init_arduino(port)
+        kwargs["serial_port_path"] = port
+        arduino.init_arduino(**kwargs)
         arduino.turn_on_led()
         time.sleep(2)
         arduino.turn_off_led()
@@ -103,4 +96,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    arduino = ArduinoSerial()
+    while True:
+        main(arduino=arduino)
